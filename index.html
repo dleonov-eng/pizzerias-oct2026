@@ -138,10 +138,16 @@ tr.gp-sub td { font-size: var(--cds-font-size-caption); }
   </header>
 
   <div class="gp-filters" id="filters" role="group" aria-label="Фильтры">
-    <label class="gp-field">Поиск
-      <input type="search" id="gp-q" placeholder="Город, сектор, пиццерия или партнёр…" autocomplete="off">
-    </label>
-    <div class="gp-field"><span>Период</span>
+    <div class="gp-field"><span>Население города</span>
+      <div class="gp-seg" id="gp-cohort">
+        <button type="button" data-v="">Все</button>
+        <button type="button" data-v="s">до 50 тыс.</button>
+        <button type="button" data-v="m">50–300 тыс.</button>
+        <button type="button" data-v="l">300 тыс. – 1 млн</button>
+        <button type="button" data-v="xl">1 млн и выше</button>
+      </div>
+    </div>
+<div class="gp-field"><span>Период</span>
       <div class="gp-seg" id="gp-month">
         <button type="button" data-v="">Весь год</button>
         <button type="button" data-v="2026-01">Янв</button>
@@ -156,40 +162,16 @@ tr.gp-sub td { font-size: var(--cds-font-size-caption); }
         <button type="button" data-v="2026-10">Окт</button>
       </div>
     </div>
-    <div class="gp-field"><span>Регион</span>
-      <div class="gp-seg" id="gp-region">
-        <button type="button" data-v="">Все</button>
-        <button type="button" data-v="Москва и Московская область">Москва и МО</button>
-        <button type="button" data-v="Санкт-Петербург и Ленинградская область">СПб и ЛО</button>
-        <button type="button" data-v="ЦФО">ЦФО</button>
-        <button type="button" data-v="СЗФО">СЗФО</button>
-        <button type="button" data-v="ЮФО">ЮФО</button>
-        <button type="button" data-v="СКФО">СКФО</button>
-        <button type="button" data-v="ПФО">ПФО</button>
-        <button type="button" data-v="УФО">УФО</button>
-        <button type="button" data-v="СФО">СФО</button>
-        <button type="button" data-v="ДВФО">ДВФО</button>
-      </div>
+<label class="gp-field">Поиск
+      <input type="search" id="gp-q" placeholder="Город, сектор, пиццерия или партнёр…" autocomplete="off">
+    </label>
+<div class="gp-field"><span>Регион</span>
+      <div class="gp-seg" id="gp-region"><button type="button" data-v="">Все</button><button type="button" data-v="ДВФО">ДВФО</button><button type="button" data-v="Москва и Московская область">Москва и МО</button><button type="button" data-v="ПФО">ПФО</button><button type="button" data-v="СЗФО">СЗФО</button><button type="button" data-v="СКФО">СКФО</button><button type="button" data-v="Санкт-Петербург и Ленинградская область">СПб и ЛО</button><button type="button" data-v="СФО">СФО</button><button type="button" data-v="УФО">УФО</button><button type="button" data-v="ЦФО">ЦФО</button><button type="button" data-v="ЮФО">ЮФО</button></div>
     </div>
-    <div class="gp-field"><span>Население города</span>
-      <div class="gp-seg" id="gp-cohort">
-        <button type="button" data-v="">Все</button>
-        <button type="button" data-v="s">до 50 тыс.</button>
-        <button type="button" data-v="m">50–300 тыс.</button>
-        <button type="button" data-v="l">300 тыс. – 1 млн</button>
-        <button type="button" data-v="xl">1 млн и выше</button>
-      </div>
+<div class="gp-field"><span>Сигнал проблемы</span>
+      <div class="gp-seg" id="gp-risk"><button type="button" data-v="">Все</button><button type="button" data-v="lfl">LFL выр. &lt; 0</button><button type="button" data-v="rating">Оценка &lt; 4.3</button><button type="button" data-v="lowrev">Средняя выр. ниже сети</button><button type="button" data-v="stops">Стопы &gt; 5%</button></div>
     </div>
-    <div class="gp-field"><span>Сигнал проблемы</span>
-      <div class="gp-seg" id="gp-risk">
-        <button type="button" data-v="">Все</button>
-        <button type="button" data-v="rating">Оценка &lt; 4.3</button>
-        <button type="button" data-v="lfl">LFL выр. &lt; 0</button>
-        <button type="button" data-v="stops">Стопы &gt; 5%</button>
-        <button type="button" data-v="lowrev">Средняя выр. ниже сети</button>
-      </div>
-    </div>
-    <div class="gp-checks">
+<div class="gp-checks">
       <label class="gp-check"><input type="checkbox" id="gp-qsr"> Есть большая тройка</label>
       <label class="gp-check"><input type="checkbox" id="gp-open"> Раскрыть все города</label>
     </div>

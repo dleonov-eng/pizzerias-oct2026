@@ -302,7 +302,7 @@ function mm(row) {
     const sum = (k) => keys.reduce((s, m) => s + (ms[m][k] || 0), 0);
     const avgf = (k) => { const xs = keys.map((m) => ms[m][k]).filter((x) => x != null); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; };
     const nPz = keys.length ? Math.max(...keys.map((m) => 1)) : 0;
-    return { rev: keys.length ? sum("rev") : null, rev_avg: avgf("rev"), rating: avgf("rating"),
+    return { rev: keys.length ? sum("rev") : null, rev_avg: avgf("rev_avg"), rating: avgf("rating"),
              lfl_rev: avgf("lfl_rev"), lfl_ord: avgf("lfl_ord"), stops: keys.length ? sum("stops") : (sum("stops_rev") || null), n_months: keys.length };
   }
   const m = ms[state.month];

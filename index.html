@@ -165,6 +165,15 @@ tr[data-key]:hover td { background: color-mix(in srgb, var(--color-fg) 4%, trans
         <button type="button" data-v="city">Остальные города</button>
       </div>
     </div>
+    <div class="gp-field"><span>Сигнал проблемы</span>
+      <div class="gp-seg" id="gp-risk">
+        <button type="button" data-v="">Все</button>
+        <button type="button" data-v="rating">Оценка &lt; 4.3</button>
+        <button type="button" data-v="lfl">LFL выр. &lt; 0</button>
+        <button type="button" data-v="stops">Стопы &gt; 5%</button>
+        <button type="button" data-v="lowrev">Средняя выр. ниже сети</button>
+      </div>
+    </div>
     <div class="gp-checks">
       <label class="gp-check"><input type="checkbox" id="gp-qsr"> Есть большая тройка</label>
       <label class="gp-check"><input type="checkbox" id="gp-stopsf"> Стопы выше 5% выручки</label>
@@ -195,6 +204,20 @@ tr[data-key]:hover td { background: color-mix(in srgb, var(--color-fg) 4%, trans
     <div class="gp-kpi bad">
       <div class="gp-kpi-label">Топ-3 по стопам, доля выручки</div>
       <ol class="gp-top" data-k="top-stops"></ol>
+    </div>
+  </section>
+
+  <section class="gp-card" id="risk">
+    <h2>Проблемные города и сектора</h2>
+    <p class="gp-note">Ранжированы по индексу проблемности: низкая оценка на картах, отрицательный LFL выручки, высокая доля стопов и средняя выручка ниже средней по сети. Чем выше индекс, тем глубже просадка. Клик — детализация города.</p>
+    <div class="gp-tablebox" style="max-height:22rem">
+      <table class="gp-table" id="risk-table">
+        <thead><tr>
+          <th>#</th><th class="l">Город</th><th class="l">Сектор</th>
+          <th>Индекс</th><th>Карты</th><th>LFL выр.</th><th>Средняя, млн ₽</th><th>Стопы, %</th><th>Предписания</th>
+        </tr></thead>
+        <tbody id="risk-body"></tbody>
+      </table>
     </div>
   </section>
 
@@ -254,7 +277,7 @@ tr[data-key]:hover td { background: color-mix(in srgb, var(--color-fg) 4%, trans
         <tbody id="detail-months"></tbody>
       </table>
     </div>
-    <p class="gp-note" style="margin:0 0 4px">Пиццерии города:</p>
+    <p class="gp-note" style="margin:0 0 4px">Пиццерии города${state ? '' : ''}:</p>
     <div class="gp-tablebox">
       <table class="gp-table" id="pz-table">
         <thead><tr>
@@ -312,7 +335,7 @@ function mm(row) {
 }
 const stopsShare = (c) => { const v = mm(c); return v.rev ? (v.stops || 0) / v.rev : null; };
 
-const state = { q: "", cohort: "", kind: "", month: "", qsr: false, stops: false, sort: "rev", dir: -1, sel: null, psort: "rev", pdir: -1 };
+const state = { q: "", cohort: "", kind: "", month: "", risk: "", qsr: false, stops: false, sort: "rev", dir: -1, sel: null, psort: "rev", pdir: -1 };
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
@@ -332,14 +355,38 @@ function pview(p) {
            pred_rko: p.pred_rko, pred_rs: p.pred_rs, pred_audit: p.pred_audit };
 }
 
+function netAvg() {
+  // network averages for the selected period (revenue-weighted where sensible)
+  const vs = cities.map(cview).filter((v) => v.rev);
+  const rev = vs.reduce((s, v) => s + v.rev, 0);
+  const wavg = (k) => { const xs = vs.filter((v) => v[k] != null && v.rev); return xs.length ? xs.reduce((s, v) => s + v[k] * v.rev, 0) / xs.reduce((s, v) => s + v.rev, 0) : null; };
+  return { rating: wavg("rating"), lfl_rev: wavg("lfl_rev"), rev_avg: vs.length ? rev / vs.reduce((s, v) => s + v.n, 0) : null };
+}
+
+function riskScore(v, net) {
+  let s = 0;
+  if (net.rating != null && v.rating != null) s += Math.max(0, (net.rating - v.rating) / 0.3);       // каждые -0.3 к средней оценке
+  if (v.lfl_rev != null) s += Math.max(0, -v.lfl_rev) / 5;                                            // каждые -5% LFL
+  if (v.stops_share != null) s += v.stops_share * 10;                                                 // доля стопов
+  if (net.rev_avg != null && v.rev_avg != null && net.rev_avg > 0) s += Math.max(0, (net.rev_avg - v.rev_avg) / net.rev_avg) * 2;
+  return Math.round(s * 10) / 10;
+}
+
 function filtered() {
   const q = state.q.toLowerCase();
+  const net = netAvg();
   return cities.filter((c) =>
     (!q || c.city.toLowerCase().includes(q) || (c.sector || "").toLowerCase().includes(q) || c.partners.some((p) => p.toLowerCase().includes(q))) &&
     (!state.cohort || cohort(c.pop) === state.cohort) &&
     (!state.kind || (state.kind === "sector" ? !!c.sector : !c.sector)) &&
     (!state.qsr || c.qsr > 0) &&
-    (!state.stops || (stopsShare(c) ?? 0) > 0.05)
+    (!state.stops || (stopsShare(c) ?? 0) > 0.05) &&
+    (!state.risk || (() => { const v = cview(c);
+      if (state.risk === "rating") return v.rating != null && v.rating < 4.3;
+      if (state.risk === "lfl") return v.lfl_rev != null && v.lfl_rev < 0;
+      if (state.risk === "stops") return v.stops_share != null && v.stops_share > 0.05;
+      if (state.risk === "lowrev") return net.rev_avg != null && v.rev_avg != null && v.rev_avg < net.rev_avg;
+      return true; })())
   );
 }
 
@@ -499,7 +546,28 @@ function renderDetail() {
     </tr>`).join("");
 }
 
-function renderAll() { const l = filtered(); renderKpis(l); renderCharts(l); renderCities(); renderDetail(); }
+function renderRisk(list) {
+  const net = netAvg();
+  const rows = list.map((c) => ({ c, v: cview(c), score: riskScore(cview(c), net) }))
+    .filter((r) => r.v.rev != null && r.score > 0)
+    .sort((a, b) => b.score - a.score).slice(0, 25);
+  $("risk-body").innerHTML = rows.map((r, i) => `
+    <tr data-key="${esc(r.c.key)}"${state.sel === r.c.key ? ' class="is-sel"' : ""}>
+      <td>${i + 1}</td>
+      <td class="l">${esc(r.c.city)}</td>
+      <td class="l">${esc(r.c.sector || "—")}</td>
+      <td class="gp-flag">${fmt(r.score, 1)}</td>
+      <td class="${r.v.rating != null && r.v.rating < 4.3 ? "gp-down" : ""}">${r.v.rating == null ? "—" : fmt(r.v.rating, 2)}</td>
+      <td class="${pctClass(r.v.lfl_rev)}">${pct(r.v.lfl_rev)}</td>
+      <td class="${net.rev_avg != null && r.v.rev_avg != null && r.v.rev_avg < net.rev_avg ? "gp-down" : ""}">${fmtM(r.v.rev_avg)}</td>
+      <td class="${r.v.stops_share != null && r.v.stops_share > 0.05 ? "gp-flag" : ""}">${r.v.stops_share == null ? "—" : fmt(r.v.stops_share * 100, 1) + "%"}</td>
+      <td>${r.c.pred || "—"}</td>
+    </tr>`).join("");
+  document.querySelectorAll("#risk-body tr").forEach((tr) =>
+    tr.addEventListener("click", () => { state.sel = tr.dataset.key; renderDetail(); renderRisk(filtered()); renderCities(); $("detail").scrollIntoView({ behavior: "smooth", block: "start" }); }));
+}
+
+function renderAll() { const l = filtered(); renderKpis(l); renderRisk(l); renderCharts(l); renderCities(); renderDetail(); }
 
 $("gp-q").addEventListener("input", (e) => { state.q = e.target.value.trim(); renderAll(); });
 document.querySelectorAll("#gp-cohort button").forEach((b) => b.addEventListener("click", () => {
@@ -510,6 +578,10 @@ document.querySelectorAll("#gp-kind button").forEach((b) => b.addEventListener("
   document.querySelectorAll("#gp-kind button").forEach((x) => x.setAttribute("aria-pressed", "false"));
   b.setAttribute("aria-pressed", "true"); state.kind = b.dataset.v; renderAll();
 }));
+document.querySelectorAll("#gp-risk button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("#gp-risk button").forEach((x) => x.setAttribute("aria-pressed", "false"));
+  b.setAttribute("aria-pressed", "true"); state.risk = b.dataset.v; renderAll();
+}));
 document.querySelectorAll("#gp-month button").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll("#gp-month button").forEach((x) => x.setAttribute("aria-pressed", "false"));
   b.setAttribute("aria-pressed", "true"); state.month = b.dataset.v; renderAll();
@@ -517,7 +589,7 @@ document.querySelectorAll("#gp-month button").forEach((b) => b.addEventListener(
 $("gp-qsr").addEventListener("change", (e) => { state.qsr = e.target.checked; renderAll(); });
 $("gp-stopsf").addEventListener("change", (e) => { state.stops = e.target.checked; renderAll(); });
 $("gp-reset").addEventListener("click", () => {
-  state.q = ""; state.cohort = ""; state.kind = ""; state.month = ""; state.qsr = false; state.stops = false;
+  state.q = ""; state.cohort = ""; state.kind = ""; state.month = ""; state.risk = ""; state.qsr = false; state.stops = false;
   $("gp-q").value = ""; $("gp-qsr").checked = false; $("gp-stopsf").checked = false;
   document.querySelectorAll(".gp-seg button").forEach((x) => x.setAttribute("aria-pressed", "false"));
   document.querySelectorAll('.gp-seg button[data-v=""]').forEach((x) => x.setAttribute("aria-pressed", "true"));

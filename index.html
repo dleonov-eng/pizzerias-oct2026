@@ -193,7 +193,7 @@ tr.gp-sub td { font-size: var(--cds-font-size-caption); }
           <th>Пиццерий</th>
           <th>Выручка, млн ₽</th>
           <th>Средняя, млн ₽</th>
-          <th>Выр./10k, млн ₽</th>
+          <th>Выр./10k, тыс. ₽/мес</th>
           <th>LFL выр.</th>
           <th>LFL зак.</th>
           <th>Карты</th>
@@ -220,7 +220,7 @@ const fmt = (v, d = 0) => v === null || v === undefined || isNaN(v) ? "—"
   : Number(v).toLocaleString("ru-RU", { maximumFractionDigits: d, minimumFractionDigits: d });
 const fmtM = (v) => v == null ? "—" : fmt(v / 1e6, 1);
 const pct = (v) => v == null ? "—" : (v > 0 ? "+" : "") + fmt(v, 1) + "%";
-const rev10k = (rev, pop) => rev != null && pop ? rev / (pop / 10000) : null;
+const rev10k = (rev, pop, nm = 1) => rev != null && pop && nm ? (rev / nm) / (pop / 10000) / 1000 : null; // тыс. ₽/мес на 10k жителей
 const sumM = (p, key) => MONTHS.reduce((s, m) => s + ((p.months || {})[m] || {})[key] || 0, 0);
 const wavgM = (p, key, wkey = "rev") => {
   let sw = 0, sv = 0;
@@ -262,23 +262,23 @@ function mm(row) {
     const sum = (k) => keys.reduce((s, m) => s + (ms[m][k] || 0), 0);
     const avgf = (k) => { const xs = keys.map((m) => ms[m][k]).filter((x) => x != null); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; };
     return { rev: keys.length ? sum("rev") : null, rev_avg: avgf("rev_avg"), rating: avgf("rating"),
-             lfl_rev: avgf("lfl_rev"), lfl_ord: avgf("lfl_ord"), stops: keys.length ? sum("stops") : (sum("stops_rev") || null) };
+             lfl_rev: avgf("lfl_rev"), lfl_ord: avgf("lfl_ord"), stops: keys.length ? sum("stops") : (sum("stops_rev") || null), n_months: keys.length };
   }
   const m = ms[state.month];
-  if (!m) return { rev: null, rev_avg: null, rating: null, lfl_rev: null, lfl_ord: null, stops: null };
+  if (!m) return { rev: null, rev_avg: null, rating: null, lfl_rev: null, lfl_ord: null, stops: null, n_months: 0 };
   return { rev: m.rev ?? null, rev_avg: m.rev ?? null, rating: m.rating ?? null,
-           lfl_rev: m.lfl_rev ?? null, lfl_ord: m.lfl_ord ?? null, stops: m.stops ?? m.stops_rev ?? null };
+           lfl_rev: m.lfl_rev ?? null, lfl_ord: m.lfl_ord ?? null, stops: m.stops ?? m.stops_rev ?? null, n_months: 1 };
 }
 
 function cview(c) {
   const v = mm(c);
   return { rev: v.rev, rev_avg: v.rev_avg, lfl_rev: v.lfl_rev, lfl_ord: v.lfl_ord, rating: v.rating,
-           stops: v.stops, stops_share: v.rev ? (v.stops || 0) / v.rev : null };
+           stops: v.stops, stops_share: v.rev ? (v.stops || 0) / v.rev : null, n_months: v.n_months };
 }
 function pview(p) {
   const v = mm(p);
   return { rev: v.rev, lfl_rev: v.lfl_rev, lfl_ord: v.lfl_ord, rating: v.rating,
-           stops: v.stops, stops_share: v.rev ? (v.stops || 0) / v.rev : null };
+           stops: v.stops, stops_share: v.rev ? (v.stops || 0) / v.rev : null, n_months: v.n_months };
 }
 
 function netAvg() {
@@ -373,7 +373,7 @@ function rowCells(rank, indent, label, v, extra, score, n, pred, qsr, open) {
     <td>${n == null ? "—" : fmt(n)}</td>
     <td>${fmtM(v.rev)}</td>
     <td>${fmtM(v.rev_avg)}</td>
-    <td>${fmtM(rev10k(v.rev, v.pop))}</td>
+    <td>${rev10k(v.rev, v.pop, v.n_months) == null ? "—" : fmt(rev10k(v.rev, v.pop, v.n_months), 0) + " тыс."}</td>
     <td class="${pctClass(v.lfl_rev)}">${pct(v.lfl_rev)}</td>
     <td class="${pctClass(v.lfl_ord)}">${pct(v.lfl_ord)}</td>
     <td class="${v.rating != null && v.rating < 4.3 ? "gp-down" : ""}">${v.rating == null ? "—" : fmt(v.rating, 2)}</td>
@@ -410,7 +410,7 @@ function pzPanel(p, c) {
     ["LFL выручка", pct(v.lfl_rev)],
     ["LFL заказы", pct(v.lfl_ord)],
     ["Средняя выручка города/сектора", fmtM(cv.rev_avg) + " млн ₽"],
-    ["Выручка города на 10 000 жителей", fmtM(rev10k(cv.rev, c.city_pop || c.pop)) + " млн ₽"],
+    ["Выручка города на 10 000 жителей", rev10k(cv.rev, c.city_pop || c.pop, cv.n_months) == null ? "—" : fmt(rev10k(cv.rev, c.city_pop || c.pop, cv.n_months), 0) + " тыс. ₽/мес"],
     ["Предписания 2026: РКО / РС / аудиты", `${fmt(p.pred_rko)} / ${fmt(p.pred_rs)} / ${fmt(p.pred_audit)} (всего ${fmt(p.pred_total)})`],
     ["РК доставка: рейтинг / время / >40 мин", `${wavgM(p, "rating_d") == null ? "—" : fmt(wavgM(p, "rating_d"), 2)} / ${wavgM(p, "deliv_time") == null ? "—" : fmt(wavgM(p, "deliv_time")) + " мин"} / ${wavgM(p, "pct40") == null ? "—" : fmt(wavgM(p, "pct40") * 100, 1) + "%"}`],
     ["РК ресторан: рейтинг / >15 мин / готовка", `${wavgM(p, "rating_r") == null ? "—" : fmt(wavgM(p, "rating_r"), 2)} / ${wavgM(p, "pct_r15") == null ? "—" : fmt(wavgM(p, "pct_r15") * 100, 1) + "%"} / ${wavgM(p, "cook_time") == null ? "—" : fmt(wavgM(p, "cook_time")) + " мин"}`],
@@ -486,7 +486,7 @@ function renderRank() {
         const pScore = riskScore({ ...pv, rev_avg: pv.rev }, NET);
         html += `<tr class="gp-row gp-sub${state.pzOpen === pid ? " is-open" : ""}" data-p="${esc(pid)}">` +
           rowCells("", baseIndent, `${esc(p.name)}<div class="muted" style="font-size:var(--cds-font-size-caption)">${esc(p.partner || "")} · ${esc(p.format || "")}</div>`,
-            { ...pv, rev_avg: null, rev: cv.rev, pop: c.city_pop || c.pop }, null, pScore, null, null, null, state.pzOpen === pid) + "</tr>";
+            { ...pv, rev_avg: null, rev: cv.rev, pop: c.city_pop || c.pop, n_months: cv.n_months }, null, pScore, null, null, null, state.pzOpen === pid) + "</tr>";
         if (state.pzOpen === pid) html += pzPanel(p, c);
       }
     }

@@ -248,7 +248,7 @@ for (const c of cities) {
   c._rs = c.pizzerias.reduce((s, p) => s + (p.pred_rs || 0), 0);
   c._audit = c.pizzerias.reduce((s, p) => s + (p.pred_audit || 0), 0);
 }
-const predLabel = (rko, rs, audit) => [rko || "", rs || "", audit || ""].join("/");
+const predLabel = (rko, rs, audit) => [rko ?? 0, rs ?? 0, audit ?? 0].join("/");
 
 const state = { q: "", cohort: "", month: "", risk: "", region: "", qsr: false, openAll: false, open: new Set(), pzOpen: null };
 

@@ -276,7 +276,7 @@ function riskScore(v, net) {
 function groups(list) {
   const map = new Map();
   for (const c of list) {
-    const g = c.sector && c.sector !== c.city ? c.city : c.key;
+    const g = (c.city === "Москва" || c.city === "Санкт-Петербург") ? c.city : c.key;
     if (!map.has(g)) map.set(g, []);
     map.get(g).push(c);
   }
@@ -413,7 +413,8 @@ function renderRank() {
       rowCells(rank, 0, `<strong>${esc(g.name)}</strong>`, v, null, score, g.grouped ? g.agg.n : g.members[0].n,
         g.grouped ? g.agg.pred : g.members[0].pred, qsrLabel(g.grouped ? g.agg : g.members[0]), open) + "</tr>";
     if (!open) continue;
-    for (const c of g.members) {
+    const members = [...g.members].sort((a, b) => riskScore(cview(b), NET) - riskScore(cview(a), NET));
+    for (const c of members) {
       const cv = cview(c);
       const cs = riskScore(cv, NET);
       const showSector = g.grouped;
@@ -421,7 +422,7 @@ function renderRank() {
       const cOpen = state.openAll || state.open.has(ckey);
       if (showSector) {
         html += `<tr class="gp-row gp-sub${cOpen ? " is-open" : ""}" data-c="${esc(ckey)}">` +
-          rowCells("", 1, `сектор ${esc(c.sector)}`, cv, null, cs, c.n, c.pred, qsrLabel(c), cOpen) + "</tr>";
+          rowCells("", 1, c.sector && c.sector !== c.city ? `сектор ${esc(c.sector)}` : `${esc(c.city)} — без сектора`, cv, null, cs, c.n, c.pred, qsrLabel(c), cOpen) + "</tr>";
         if (!cOpen) continue;
       }
       let pzs = c.pizzerias.map((p) => ({ p, v: pview(p) }));

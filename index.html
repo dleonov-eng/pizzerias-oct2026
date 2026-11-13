@@ -316,7 +316,7 @@ function renderCities() {
       <td>${fmtM(c.rev_avg)}</td>
       <td class="${pctClass(c.lfl_rev)}">${pct(c.lfl_rev)}</td>
       <td class="${pctClass(c.lfl_ord)}">${pct(c.lfl_ord)}</td>
-      <td>${c.rating ?? "—"}</td>
+      <td>${c.rating == null ? "—" : fmt(c.rating, 2)}</td>
       <td>${fmtM(c.stops)}</td>
       <td>${stopsShare(c) == null ? "—" : fmt(stopsShare(c) * 100, 1) + "%"}</td>
       <td class="gp-hide-narrow">${c.pred || "—"}</td>
@@ -341,9 +341,9 @@ function renderDetail() {
     ["Оценка на картах", c.rating ?? "—"],
     ["Стопы", fmtM(c.stops) + " млн ₽"],
     ["Предписания 2026", fmt(c.pred)],
-    [c.sector ? "Население сектора" : "Население", fmt(c.pop)],
+    [c.sector && c.sector !== c.city ? "Население сектора" : "Население", fmt(c.pop)],
   ];
-  if (c.sector) k.push(["Население города", fmt(c.city_pop)]);
+  if (c.sector && c.sector !== c.city) k.push(["Население города", fmt(c.city_pop)]);
   $("detail-kpis").innerHTML = k.map(([l, v]) =>
     `<div class="gp-detail-kpi"><span class="gp-kpi-label">${esc(l)}</span><span class="v">${esc(v)}</span></div>`).join("");
   const badges = [
@@ -366,7 +366,7 @@ function renderDetail() {
       <td>${fmtM(p.rev)}</td>
       <td class="${pctClass(p.lfl_rev)}">${pct(p.lfl_rev)}</td>
       <td class="${pctClass(p.lfl_ord)}">${pct(p.lfl_ord)}</td>
-      <td>${p.rating ?? "—"}</td>
+      <td>${p.rating == null ? "—" : fmt(p.rating, 2)}</td>
       <td>${fmtM(p.stops_rev)}</td>
       <td>${p.stops_share == null ? "—" : fmt(p.stops_share * 100, 1) + "%"}</td>
       <td class="gp-hide-narrow">${fmt(p.pred_rko)}</td>

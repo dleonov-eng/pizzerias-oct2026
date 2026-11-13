@@ -215,7 +215,7 @@ tr.gp-sub td { font-size: var(--cds-font-size-caption); }
           <th>LFL зак.</th>
           <th>Карты</th>
           <th>Стопы, %</th>
-          <th class="gp-hide-narrow">Предписания</th>
+          <th class="gp-hide-narrow" title="РКО / РС / аудиты">Предписания РКО/РС/Ауд</th>
           <th class="gp-hide-narrow l">Конкуренты</th>
         </tr></thead>
         <tbody id="rank-body"></tbody>
@@ -242,6 +242,13 @@ const cohort = (pop) => pop == null ? "" : pop < 50000 ? "s" : pop < 300000 ? "m
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+
+for (const c of cities) {
+  c._rko = c.pizzerias.reduce((s, p) => s + (p.pred_rko || 0), 0);
+  c._rs = c.pizzerias.reduce((s, p) => s + (p.pred_rs || 0), 0);
+  c._audit = c.pizzerias.reduce((s, p) => s + (p.pred_audit || 0), 0);
+}
+const predLabel = (rko, rs, audit) => [rko || "", rs || "", audit || ""].join("/");
 
 const state = { q: "", cohort: "", month: "", risk: "", region: "", qsr: false, openAll: false, open: new Set(), pzOpen: null };
 
@@ -316,6 +323,7 @@ function groups(list) {
         rev_avg: rev / cs.reduce((s, c) => s + c.n, 0) };
     }
     const agg = { key: g, city: base.city, sector: "", n: cs.reduce((s, c) => s + c.n, 0),
+      _rko: cs.reduce((s, c) => s + c._rko, 0), _rs: cs.reduce((s, c) => s + c._rs, 0), _audit: cs.reduce((s, c) => s + c._audit, 0),
       pred: cs.reduce((s, c) => s + (c.pred || 0), 0),
       pop: base.city_pop || cs.reduce((s, c) => s + (c.pop || 0), 0) || null,
       qsr: Math.max(...cs.map((c) => c.qsr ?? 0)) || null,
@@ -427,7 +435,8 @@ function renderRank() {
     const q = state.q.toLowerCase();
     html += `<tr class="gp-row${open ? " is-open" : ""}" data-g="${esc(g.gkey)}">` +
       rowCells(rank, 0, `<strong>${esc(g.name)}</strong>`, v, null, score, g.grouped ? g.agg.n : g.members[0].n,
-        g.grouped ? g.agg.pred : g.members[0].pred, qsrLabel(g.grouped ? g.agg : g.members[0]), open) + "</tr>";
+        (g.grouped ? predLabel(g.agg._rko, g.agg._rs, g.agg._audit) : predLabel(g.members[0]._rko, g.members[0]._rs, g.members[0]._audit)),
+        qsrLabel(g.grouped ? g.agg : g.members[0]), open) + "</tr>";
     if (!open) continue;
     const members = [...g.members].sort((a, b) => riskScore(cview(b), NET) - riskScore(cview(a), NET));
     for (const c of members) {
@@ -438,7 +447,7 @@ function renderRank() {
       const cOpen = state.openAll || state.open.has(ckey);
       if (showSector) {
         html += `<tr class="gp-row gp-sub${cOpen ? " is-open" : ""}" data-c="${esc(ckey)}">` +
-          rowCells("", 1, c.sector && c.sector !== c.city ? `сектор ${esc(c.sector)}` : `${esc(c.city)} — без сектора`, cv, null, cs, c.n, c.pred, qsrLabel(c), cOpen) + "</tr>";
+          rowCells("", 1, c.sector && c.sector !== c.city ? `сектор ${esc(c.sector)}` : `${esc(c.city)} — без сектора`, cv, null, cs, c.n, predLabel(c._rko, c._rs, c._audit), qsrLabel(c), cOpen) + "</tr>";
         if (!cOpen) continue;
       }
       let pzs = c.pizzerias.map((p) => ({ p, v: pview(p) }));

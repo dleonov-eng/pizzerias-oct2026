@@ -198,6 +198,8 @@ tr.gp-sub td { font-size: var(--cds-font-size-caption); }
           <th>LFL выр.</th>
           <th>LFL зак.</th>
           <th>Карты</th>
+          <th class="gp-hide-narrow" title="Рейтинг качества, доставка">РК дост</th>
+          <th class="gp-hide-narrow" title="Рейтинг качества, ресторан">РК рест</th>
           <th>Стопы, %</th>
           <th class="gp-hide-narrow" title="РКО / РС / аудиты">Предписания РКО/РС/Ауд</th>
           <th class="gp-hide-narrow l">Конкуренты</th>
@@ -220,7 +222,7 @@ const MNAMES = {"2026-01":"Янв","2026-02":"Фев","2026-03":"Мар","2026-0
 const fmt = (v, d = 0) => v === null || v === undefined || isNaN(v) ? "—"
   : Number(v).toLocaleString("ru-RU", { maximumFractionDigits: d, minimumFractionDigits: d });
 const fmtM = (v) => v == null ? "—" : fmt(v / 1e6, 1);
-const pct = (v) => v == null ? "—" : (v > 0 ? "+" : "") + fmt(v, 1) + "%";
+const pct = (v) => v == null ? "—" : (v > 0 ? "+" : "") + fmt(v * 100, 1) + "%";
 const rev10k = (rev, pop, nm = 1) => rev != null && pop && nm ? (rev / nm) / (pop / 10000) / 1000 : null; // тыс. ₽/мес на 10k жителей
 const sumM = (p, key) => MONTHS.reduce((s, m) => s + ((p.months || {})[m] || {})[key] || 0, 0);
 const wavgM = (p, key, wkey = "rev") => {
@@ -242,6 +244,12 @@ const ageText = (d) => {
   return (y ? y + " г. " : "") + mo + " мес.";
 };
 const pctClass = (v) => v == null ? "" : v > 0 ? "gp-up" : v < 0 ? "gp-down" : "";
+function rkOf(pzs, key) {
+  const ms = state.month ? [state.month] : MONTHS;
+  const xs = [];
+  for (const p of pzs) for (const m of ms) { const v = ((p.months || {})[m] || {})[key]; if (v != null) xs.push(v); }
+  return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+}
 const cohort = (pop) => pop == null ? "" : pop < 50000 ? "s" : pop < 300000 ? "m" : pop < 1e6 ? "l" : "xl";
 
 const $ = (id) => document.getElementById(id);
@@ -379,6 +387,8 @@ function rowCells(rank, indent, label, v, extra, score, n, pred, qsr, open) {
     <td class="${pctClass(v.lfl_rev)}">${pct(v.lfl_rev)}</td>
     <td class="${pctClass(v.lfl_ord)}">${pct(v.lfl_ord)}</td>
     <td class="${v.rating != null && v.rating < 4.3 ? "gp-down" : ""}">${v.rating == null ? "—" : fmt(v.rating, 2)}</td>
+    <td class="gp-hide-narrow">${v.rk_d == null ? "—" : fmt(v.rk_d, 2)}</td>
+    <td class="gp-hide-narrow">${v.rk_r == null ? "—" : fmt(v.rk_r, 2)}</td>
     <td class="${v.stops_share != null && v.stops_share > 0.05 ? "gp-flag" : ""}">${v.stops_share == null ? "—" : fmt(v.stops_share * 100, 1) + "%"}</td>
     <td class="gp-hide-narrow">${pred || "—"}</td>
     <td class="gp-hide-narrow l">${esc(qsr || "—")}</td>`;
@@ -435,7 +445,7 @@ function pzPanel(p, c) {
     const sh = mv.rev ? (mv.stops_rev || 0) / mv.rev : null;
     return `<tr><td class="l">${MNAMES[m]}</td><td>${fmtM(mv.rev)}</td><td>${fmtM(mv.rev_d)}</td><td>${fmtM((mv.rev_r || 0) + (mv.rev_pu || 0))}</td><td class="${pctClass(mv.lfl_rev)}">${pct(mv.lfl_rev)}</td><td class="${pctClass(mv.lfl_ord)}">${pct(mv.lfl_ord)}</td><td>${mv.rating == null ? "—" : fmt(mv.rating, 2)}</td><td>${mv.health || "—"}</td><td>${mv.rk_d == null ? "—" : fmt(mv.rk_d, 2)}</td><td>${mv.kp_d == null ? "—" : fmt(mv.kp_d, 3)}</td><td>${mv.rk_r == null ? "—" : fmt(mv.rk_r, 2)}</td><td>${mv.kp_r == null ? "—" : fmt(mv.kp_r, 3)}</td><td>${fmt(mv.new_clients)}</td><td>${fmtM(mv.stops_rev)}</td><td>${sh == null ? "—" : fmt(sh * 100, 1) + "%"}</td></tr>`;
   }).join("");
-  return `<tr class="gp-pz-panel"><td colspan="12">
+  return `<tr class="gp-pz-panel"><td colspan="16">
     <div class="gp-card" style="box-shadow:none">
       <div class="gp-card-head"><h2>${esc(p.name)}</h2><span class="gp-note" style="margin:0">${esc(p.address || "")}</span></div>
       <div class="gp-detail-kpis">${k.map(([l, x]) => `<div class="gp-detail-kpi"><span class="gp-kpi-label">${l}</span><span class="v" style="font-size:var(--cds-font-size-body)">${x}</span></div>`).join("")}</div>
@@ -463,8 +473,10 @@ function renderRank() {
     rank++;
     const open = state.openAll || state.open.has(g.gkey);
     const q = state.q.toLowerCase();
+    const allPzs = g.members.flatMap((c) => c.pizzerias);
     html += `<tr class="gp-row${open ? " is-open" : ""}" data-g="${esc(g.gkey)}">` +
-      rowCells(rank, 0, `<strong>${esc(g.name)}</strong>`, { ...v, pop: g.grouped ? g.agg.pop : (g.members[0].pop ?? g.members[0].city_pop) }, null, score, g.grouped ? g.agg.n : g.members[0].n,
+      rowCells(rank, 0, `<strong>${esc(g.name)}</strong>`, { ...v, pop: g.grouped ? g.agg.pop : (g.members[0].pop ?? g.members[0].city_pop),
+        rk_d: rkOf(allPzs, "rk_d"), rk_r: rkOf(allPzs, "rk_r") }, null, score, g.grouped ? g.agg.n : g.members[0].n,
         (g.grouped ? predLabel(g.agg._rko, g.agg._rs, g.agg._audit) : predLabel(g.members[0]._rko, g.members[0]._rs, g.members[0]._audit)),
         qsrLabel(g.grouped ? g.agg : g.members[0]), open) + "</tr>";
     if (!open) continue;
@@ -477,7 +489,7 @@ function renderRank() {
       const cOpen = state.openAll || state.open.has(ckey);
       if (showSector) {
         html += `<tr class="gp-row gp-sub${cOpen ? " is-open" : ""}" data-c="${esc(ckey)}">` +
-          rowCells("", 1, c.sector && c.sector !== c.city ? `сектор ${esc(c.sector)}` : `${esc(c.city)} — без сектора`, { ...cv, pop: c.pop }, null, cs, c.n, predLabel(c._rko, c._rs, c._audit), qsrLabel(c), cOpen) + "</tr>";
+          rowCells("", 1, c.sector && c.sector !== c.city ? `сектор ${esc(c.sector)}` : `${esc(c.city)} — без сектора`, { ...cv, pop: c.pop, rk_d: rkOf(c.pizzerias, "rk_d"), rk_r: rkOf(c.pizzerias, "rk_r") }, null, cs, c.n, predLabel(c._rko, c._rs, c._audit), qsrLabel(c), cOpen) + "</tr>";
         if (!cOpen) continue;
       }
       let pzs = c.pizzerias.map((p) => ({ p, v: pview(p) }));
@@ -490,7 +502,7 @@ function renderRank() {
         const pScore = riskScore({ ...pv, rev_avg: pv.rev }, NET);
         html += `<tr class="gp-row gp-sub${state.pzOpen === pid ? " is-open" : ""}" data-p="${esc(pid)}">` +
           rowCells("", baseIndent, `${esc(p.name)}<div class="muted" style="font-size:var(--cds-font-size-caption)">${esc(p.partner || "")} · ${esc(p.format || "")}</div>`,
-            { ...pv, rev_avg: null, rev: cv.rev, pop: c.city_pop || c.pop, n_months: cv.n_months }, null, pScore, null, null, null, state.pzOpen === pid) + "</tr>";
+            { ...pv, rev_avg: null, rev: cv.rev, pop: c.city_pop || c.pop, n_months: cv.n_months, rk_d: avgSel(p, "rk_d"), rk_r: avgSel(p, "rk_r") }, null, pScore, null, null, null, state.pzOpen === pid) + "</tr>";
         if (state.pzOpen === pid) html += pzPanel(p, c);
       }
     }

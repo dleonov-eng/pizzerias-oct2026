@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Пиццерии по городам — октябрь 2026</title>
+<title>Пиццерии по городам</title>
 <style>
 :root {
   --color-fg: #1f1e1c; --color-fg-muted: #6a6862; --color-bg: #ffffff; --color-panel: #faf9f6; --color-border-line: #e4e1da;
@@ -117,22 +117,29 @@ th[aria-sort="ascending"] .gp-th-btn::after { content: " ↑"; }
 .gp-detail-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--cds-gap-sm); }
 .gp-detail-kpi { background: var(--color-bg); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-sm) var(--cds-pad-md); display: grid; gap: 2px; }
 .gp-detail-kpi .v { font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-heading); }
-tr[data-key] { cursor: pointer; }
-tr[data-key]:hover td { background: color-mix(in srgb, var(--color-fg) 4%, transparent); }
+tr.gp-row { cursor: pointer; }
+tr.gp-row:hover td { background: color-mix(in srgb, var(--color-fg) 4%, transparent); }
+tr.gp-row.is-open > td { background: color-mix(in srgb, var(--color-fg) 5%, transparent); }
+td.gp-indent1 { padding-left: 1.4rem; }
+td.gp-indent2 { padding-left: 2.6rem; }
+.gp-caret { display: inline-block; width: 1em; transition: transform .15s; color: var(--color-fg-muted); }
+tr.is-open .gp-caret { transform: rotate(90deg); }
+tr.gp-sub td { font-size: var(--cds-font-size-caption); }
+.gp-pz-panel td { background: var(--color-bg); }
 </style>
 </head>
 <body>
 <div id="dash-root">
 <div class="gp">
   <header class="gp-head" id="top">
-    <h1>Пиццерии по городам — октябрь 2026</h1>
-    <p class="gp-lede">Все пиццерии сети за январь–октябрь 2026 года: выручка, LFL, стопы, предписания за 2026 год, оценка на картах, население и большая тройка QSR. Москва и Санкт-Петербург разбиты на сектора — каждый сектор как отдельный город. Клик по строке открывает детализацию города.</p>
+    <h1>Пиццерии по городам — январь–октябрь 2026</h1>
+    <p class="gp-lede">«Раненые рынки»: города ранжированы от худших к лучшим по индексу проблемности — оценка на картах ниже сети, отрицательный LFL, высокая доля стопов, средняя выручка ниже средней по сети. Клик по городу раскрывает сектора и пиццерии; клик по пиццерии — полную сводку.</p>
     <p class="gp-snap">Выгрузки Dodo (стопы и выручка помесячно, LFL, формат, предписания, оценки на картах, QSR на 13.11.2026). Население — Росстат на 01.01.2025; где города нет в бюллетене — франчайзи-манифест и ВПН/Минздрав.</p>
   </header>
 
   <div class="gp-filters" id="filters" role="group" aria-label="Фильтры">
     <label class="gp-field">Поиск
-      <input type="search" id="gp-q" placeholder="Город, сектор или партнёр…" autocomplete="off">
+      <input type="search" id="gp-q" placeholder="Город, сектор, пиццерия или партнёр…" autocomplete="off">
     </label>
     <div class="gp-field"><span>Период</span>
       <div class="gp-seg" id="gp-month">
@@ -158,13 +165,6 @@ tr[data-key]:hover td { background: color-mix(in srgb, var(--color-fg) 4%, trans
         <button type="button" data-v="xl">1 млн и выше</button>
       </div>
     </div>
-    <div class="gp-field"><span>Тип</span>
-      <div class="gp-seg" id="gp-kind">
-        <button type="button" data-v="">Все</button>
-        <button type="button" data-v="sector">Сектора Москвы и СПб</button>
-        <button type="button" data-v="city">Остальные города</button>
-      </div>
-    </div>
     <div class="gp-field"><span>Сигнал проблемы</span>
       <div class="gp-seg" id="gp-risk">
         <button type="button" data-v="">Все</button>
@@ -176,127 +176,37 @@ tr[data-key]:hover td { background: color-mix(in srgb, var(--color-fg) 4%, trans
     </div>
     <div class="gp-checks">
       <label class="gp-check"><input type="checkbox" id="gp-qsr"> Есть большая тройка</label>
-      <label class="gp-check"><input type="checkbox" id="gp-stopsf"> Стопы выше 5% выручки</label>
+      <label class="gp-check"><input type="checkbox" id="gp-open"> Раскрыть все города</label>
     </div>
     <button type="button" class="gp-reset" id="gp-reset">Сбросить фильтры</button>
   </div>
 
-  <section class="gp-kpis" id="kpis" aria-label="Итоги по выборке">
-    <div class="gp-kpi">
-      <div class="gp-kpi-label">Выручка за выбранный период</div>
-      <div class="gp-kpi-value"><span data-k="rev">—</span><span class="gp-kpi-unit">млн ₽</span></div>
-      <div class="gp-kpi-sub"><span data-k="pz">—</span> пиццерий в <span data-k="ct">—</span> городах/секторах</div>
-    </div>
-    <div class="gp-kpi">
-      <div class="gp-kpi-label">Средняя выручка на пиццерию</div>
-      <div class="gp-kpi-value"><span data-k="avg">—</span><span class="gp-kpi-unit">млн ₽</span></div>
-      <div class="gp-kpi-sub">среднее по выборке</div>
-    </div>
-    <div class="gp-kpi">
-      <div class="gp-kpi-label">Стопы</div>
-      <div class="gp-kpi-value"><span data-k="stops">—</span><span class="gp-kpi-unit">млн ₽</span></div>
-      <div class="gp-kpi-sub">упущенная выручка, <span data-k="stops-sh">—</span> выручки</div>
-    </div>
-    <div class="gp-kpi good">
-      <div class="gp-kpi-label">Топ-3 по выручке, млн ₽</div>
-      <ol class="gp-top" data-k="top-best"></ol>
-    </div>
-    <div class="gp-kpi bad">
-      <div class="gp-kpi-label">Топ-3 по стопам, доля выручки</div>
-      <ol class="gp-top" data-k="top-stops"></ol>
-    </div>
-  </section>
-
-  <section class="gp-card" id="risk">
-    <h2>Проблемные города и сектора</h2>
-    <p class="gp-note">Ранжированы по индексу проблемности: низкая оценка на картах, отрицательный LFL выручки, высокая доля стопов и средняя выручка ниже средней по сети. Чем выше индекс, тем глубже просадка. Клик — детализация города.</p>
-    <div class="gp-tablebox" style="max-height:22rem">
-      <table class="gp-table" id="risk-table">
-        <thead><tr>
-          <th>#</th><th class="l">Город</th><th class="l">Сектор</th>
-          <th>Индекс</th><th>Карты</th><th>LFL выр.</th><th>Средняя, млн ₽</th><th>Стопы, %</th><th>Предписания</th>
-        </tr></thead>
-        <tbody id="risk-body"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <div class="gp-grid">
-    <section class="gp-card">
-      <h2>Динамика выручки по месяцам</h2>
-      <p class="gp-note">Сумма по текущей выборке, млн ₽. Линия — выручка, столбики внизу — средний LFL выручки по месяцу.</p>
-      <div class="gp-chart" id="chart-rev"></div>
-      <div class="gp-legend"><span><i style="background:var(--color-fg)"></i>Выручка</span><span><i style="background:var(--color-ok)"></i>LFL > 0</span><span><i style="background:var(--color-bad)"></i>LFL &lt; 0</span></div>
-    </section>
-    <section class="gp-card">
-      <h2>Стопы по месяцам</h2>
-      <p class="gp-note">Упущенная выручка от стопов по выборке: млн ₽ (линия) и доля от выручки (точки).</p>
-      <div class="gp-chart" id="chart-stops"></div>
-      <div class="gp-legend"><span><i style="background:var(--color-warn)"></i>Стопы, млн ₽</span></div>
-    </section>
-  </div>
-
   <section class="gp-card" id="rank">
     <div class="gp-card-head">
-      <h2>Города и сектора</h2>
+      <h2>Города: от худших к лучшим</h2>
+      <span class="gp-note" id="rank-sub" style="margin:0"></span>
     </div>
-    <p class="gp-note">Клик по строке — детализация города. Сортировка по заголовкам. LFL — год к году по выручке и заказам.</p>
+    <p class="gp-note">Индекс: каждые −0,3 оценки на картах к среднему сети, каждые −5% LFL выручки, доля стопов, дефицит средней выручки к сети ×2. Клик по городу — сектора/пиццерии; клик по пиццерии — полная сводка.</p>
     <div class="gp-tablebox">
-      <table class="gp-table" id="cities-table">
+      <table class="gp-table" id="rank-table">
         <thead><tr>
-          <th class="l"><button type="button" class="gp-th-btn" data-sort="city">Город</button></th>
-          <th class="l"><button type="button" class="gp-th-btn" data-sort="sector">Сектор</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="n">Пиццерий</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="rev">Выручка, млн ₽</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="rev_avg">Средняя, млн ₽</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="lfl_rev">LFL выр.</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="lfl_ord">LFL зак.</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="rating">Карты</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="stops">Стопы, млн ₽</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="stops_share">Стопы, %</button></th>
-          <th class="gp-hide-narrow"><button type="button" class="gp-th-btn" data-sort="pred">Предписания</button></th>
-          <th class="gp-hide-narrow"><button type="button" class="gp-th-btn" data-sort="pop">Население</button></th>
+          <th>#</th>
+          <th class="l">Город / сектор / пиццерия</th>
+          <th>Индекс</th>
+          <th>Пиццерий</th>
+          <th>Выручка, млн ₽</th>
+          <th>Средняя, млн ₽</th>
+          <th>LFL выр.</th>
+          <th>LFL зак.</th>
+          <th>Карты</th>
+          <th>Стопы, %</th>
+          <th class="gp-hide-narrow">Предписания</th>
+          <th class="gp-hide-narrow l">Конкуренты</th>
         </tr></thead>
-        <tbody id="cities-body"></tbody>
+        <tbody id="rank-body"></tbody>
       </table>
     </div>
-    <div class="gp-empty" id="cities-empty" hidden>Ничего не найдено — ослабьте фильтры.</div>
-  </section>
-
-  <section class="gp-card" id="detail" hidden>
-    <div class="gp-card-head">
-      <h2 id="detail-title">—</h2>
-      <span class="gp-note" id="detail-sub" style="margin:0"></span>
-    </div>
-    <div class="gp-detail-kpis" id="detail-kpis"></div>
-    <div class="gp-badges" id="detail-badges" style="margin: var(--cds-gap-sm) 0 var(--cds-gap-md)"></div>
-    <p class="gp-note" style="margin:0 0 4px">Динамика города по месяцам:</p>
-    <div class="gp-tablebox" style="max-height:16rem; margin-bottom: var(--cds-gap-md)">
-      <table class="gp-table">
-        <thead><tr><th class="l">Месяц</th><th>Выручка, млн ₽</th><th>Средняя, млн ₽</th><th>LFL выр.</th><th>LFL зак.</th><th>Карты</th><th>Стопы, млн ₽</th><th>Стопы, %</th></tr></thead>
-        <tbody id="detail-months"></tbody>
-      </table>
-    </div>
-    <p class="gp-note" style="margin:0 0 4px">Пиццерии города${state ? '' : ''}:</p>
-    <div class="gp-tablebox">
-      <table class="gp-table" id="pz-table">
-        <thead><tr>
-          <th class="l"><button type="button" class="gp-th-btn" data-sort="name">Пиццерия</button></th>
-          <th class="l"><button type="button" class="gp-th-btn" data-sort="partner">Партнёр</button></th>
-          <th class="l gp-hide-narrow"><button type="button" class="gp-th-btn" data-sort="format">Формат</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="rev">Выручка, млн ₽</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="lfl_rev">LFL выр.</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="lfl_ord">LFL зак.</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="rating">Карты</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="stops_rev">Стопы, млн ₽</button></th>
-          <th><button type="button" class="gp-th-btn" data-sort="stops_share">Стопы, %</button></th>
-          <th class="gp-hide-narrow"><button type="button" class="gp-th-btn" data-sort="pred_rko">РКО</button></th>
-          <th class="gp-hide-narrow"><button type="button" class="gp-th-btn" data-sort="pred_rs">РС</button></th>
-          <th class="gp-hide-narrow"><button type="button" class="gp-th-btn" data-sort="pred_audit">Аудиты</button></th>
-        </tr></thead>
-        <tbody id="pz-body"></tbody>
-      </table>
-    </div>
+    <div class="gp-empty" id="rank-empty" hidden>Ничего не найдено — ослабьте фильтры.</div>
   </section>
 
   <p class="gp-note">Нет данных по датам открытия (возраст пиццерии, первая в городе), метрикам «РК доставка/ресторан» и маркетинговым показателям (возвращаемость, новые клиенты) — нужен дополнительный источник.</p>
@@ -313,50 +223,40 @@ const fmt = (v, d = 0) => v === null || v === undefined || isNaN(v) ? "—"
 const fmtM = (v) => v == null ? "—" : fmt(v / 1e6, 1);
 const pct = (v) => v == null ? "—" : (v > 0 ? "+" : "") + fmt(v, 1) + "%";
 const pctClass = (v) => v == null ? "" : v > 0 ? "gp-up" : v < 0 ? "gp-down" : "";
-
 const cohort = (pop) => pop == null ? "" : pop < 50000 ? "s" : pop < 300000 ? "m" : pop < 1e6 ? "l" : "xl";
-const cityLabel = (c) => c.sector && c.sector !== c.city ? c.city + " — сектор " + c.sector : c.city;
 
-// metric accessor for a row (city months agg or pizzeria months) given selected month
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+
+const state = { q: "", cohort: "", month: "", risk: "", qsr: false, openAll: false, open: new Set(), pzOpen: null };
+
 function mm(row) {
   const ms = row.months || {};
   if (!state.month) {
     const keys = Object.keys(ms);
     const sum = (k) => keys.reduce((s, m) => s + (ms[m][k] || 0), 0);
     const avgf = (k) => { const xs = keys.map((m) => ms[m][k]).filter((x) => x != null); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; };
-    const nPz = keys.length ? Math.max(...keys.map((m) => 1)) : 0;
     return { rev: keys.length ? sum("rev") : null, rev_avg: avgf("rev_avg"), rating: avgf("rating"),
-             lfl_rev: avgf("lfl_rev"), lfl_ord: avgf("lfl_ord"), stops: keys.length ? sum("stops") : (sum("stops_rev") || null), n_months: keys.length };
+             lfl_rev: avgf("lfl_rev"), lfl_ord: avgf("lfl_ord"), stops: keys.length ? sum("stops") : (sum("stops_rev") || null) };
   }
   const m = ms[state.month];
-  if (!m) return { rev: null, rev_avg: null, rating: null, lfl_rev: null, lfl_ord: null, stops: null, n_months: 0 };
+  if (!m) return { rev: null, rev_avg: null, rating: null, lfl_rev: null, lfl_ord: null, stops: null };
   return { rev: m.rev ?? null, rev_avg: m.rev ?? null, rating: m.rating ?? null,
-           lfl_rev: m.lfl_rev ?? null, lfl_ord: m.lfl_ord ?? null, stops: m.stops ?? m.stops_rev ?? null, n_months: 1 };
+           lfl_rev: m.lfl_rev ?? null, lfl_ord: m.lfl_ord ?? null, stops: m.stops ?? m.stops_rev ?? null };
 }
-const stopsShare = (c) => { const v = mm(c); return v.rev ? (v.stops || 0) / v.rev : null; };
 
-const state = { q: "", cohort: "", kind: "", month: "", risk: "", qsr: false, stops: false, sort: "rev", dir: -1, sel: null, psort: "rev", pdir: -1 };
-
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
-
-// derived sortable view of a city row for current month
 function cview(c) {
   const v = mm(c);
-  return { city: c.city, sector: c.sector || "", n: c.n, rev: v.rev, rev_avg: v.rev_avg,
-           lfl_rev: v.lfl_rev, lfl_ord: v.lfl_ord, rating: v.rating, stops: v.stops,
-           stops_share: v.rev ? (v.stops || 0) / v.rev : null, pred: c.pred, pop: c.pop, key: c.key };
+  return { rev: v.rev, rev_avg: v.rev_avg, lfl_rev: v.lfl_rev, lfl_ord: v.lfl_ord, rating: v.rating,
+           stops: v.stops, stops_share: v.rev ? (v.stops || 0) / v.rev : null };
 }
 function pview(p) {
   const v = mm(p);
-  return { name: p.name, partner: p.partner || "", format: p.format || "", address: p.address,
-           rev: v.rev, lfl_rev: v.lfl_rev, lfl_ord: v.lfl_ord, rating: v.rating,
-           stops_rev: v.stops, stops_share: v.rev ? (v.stops || 0) / v.rev : null,
-           pred_rko: p.pred_rko, pred_rs: p.pred_rs, pred_audit: p.pred_audit };
+  return { rev: v.rev, lfl_rev: v.lfl_rev, lfl_ord: v.lfl_ord, rating: v.rating,
+           stops: v.stops, stops_share: v.rev ? (v.stops || 0) / v.rev : null };
 }
 
 function netAvg() {
-  // network averages for the selected period (revenue-weighted where sensible)
   const vs = cities.map(cview).filter((v) => v.rev);
   const rev = vs.reduce((s, v) => s + v.rev, 0);
   const wavg = (k) => { const xs = vs.filter((v) => v[k] != null && v.rev); return xs.length ? xs.reduce((s, v) => s + v[k] * v.rev, 0) / xs.reduce((s, v) => s + v.rev, 0) : null; };
@@ -365,248 +265,234 @@ function netAvg() {
 
 function riskScore(v, net) {
   let s = 0;
-  if (net.rating != null && v.rating != null) s += Math.max(0, (net.rating - v.rating) / 0.3);       // каждые -0.3 к средней оценке
-  if (v.lfl_rev != null) s += Math.max(0, -v.lfl_rev) / 5;                                            // каждые -5% LFL
-  if (v.stops_share != null) s += v.stops_share * 10;                                                 // доля стопов
+  if (net.rating != null && v.rating != null) s += Math.max(0, (net.rating - v.rating) / 0.3);
+  if (v.lfl_rev != null) s += Math.max(0, -v.lfl_rev) / 5;
+  if (v.stops_share != null) s += v.stops_share * 10;
   if (net.rev_avg != null && v.rev_avg != null && net.rev_avg > 0) s += Math.max(0, (net.rev_avg - v.rev_avg) / net.rev_avg) * 2;
   return Math.round(s * 10) / 10;
 }
 
-function filtered() {
+// group rows: Москва and СПб combine their sectors under one city row
+function groups(list) {
+  const map = new Map();
+  for (const c of list) {
+    const g = c.sector && c.sector !== c.city ? c.city : c.key;
+    if (!map.has(g)) map.set(g, []);
+    map.get(g).push(c);
+  }
+  return [...map.entries()].map(([g, cs]) => {
+    const base = cs[0];
+    if (cs.length === 1) return { gkey: base.key, name: base.city, members: cs, grouped: false };
+    // aggregate member cities across months
+    const months = {};
+    for (const m of MONTHS) {
+      let rev = 0, stops = 0, lflr = [], lflo = [], rats = [], wsum = 0, rsum = 0;
+      for (const c of cs) {
+        const mv = (c.months || {})[m]; if (!mv) continue;
+        rev += mv.rev || 0; stops += mv.stops || 0;
+        if (mv.lfl_rev != null) lflr.push(mv.lfl_rev);
+        if (mv.lfl_ord != null) lflo.push(mv.lfl_ord);
+        if (mv.rating != null && mv.rev) { rsum += mv.rating * mv.rev; wsum += mv.rev; }
+      }
+      if (rev || stops) months[m] = { rev, stops,
+        lfl_rev: lflr.length ? lflr.reduce((a, b) => a + b) / lflr.length : null,
+        lfl_ord: lflo.length ? lflo.reduce((a, b) => a + b) / lflo.length : null,
+        rating: wsum ? rsum / wsum : null,
+        rev_avg: rev / cs.reduce((s, c) => s + c.n, 0) };
+    }
+    const agg = { key: g, city: base.city, sector: "", n: cs.reduce((s, c) => s + c.n, 0),
+      pred: cs.reduce((s, c) => s + (c.pred || 0), 0),
+      pop: base.city_pop || cs.reduce((s, c) => s + (c.pop || 0), 0) || null,
+      qsr: Math.max(...cs.map((c) => c.qsr ?? 0)) || null,
+      bk: Math.max(...cs.map((c) => c.bk ?? 0)), rostics: Math.max(...cs.map((c) => c.rostics ?? 0)),
+      vit: Math.max(...cs.map((c) => c.vit ?? 0)), partners: [...new Set(cs.flatMap((c) => c.partners))],
+      formats: [...new Set(cs.flatMap((c) => c.formats))], months };
+    return { gkey: g, name: base.city, members: cs, grouped: true, agg };
+  });
+}
+
+function qsrLabel(c) {
+  if (c.qsr == null || c.qsr === 0) return "—";
+  const parts = [];
+  if (c.bk) parts.push("BK " + fmt(c.bk));
+  if (c.rostics) parts.push("Rostic's " + fmt(c.rostics));
+  if (c.vit) parts.push("ВиТ " + fmt(c.vit));
+  return parts.join(", ") || fmt(c.qsr);
+}
+
+function cityPass(c) {
   const q = state.q.toLowerCase();
-  const net = netAvg();
-  return cities.filter((c) =>
-    (!q || c.city.toLowerCase().includes(q) || (c.sector || "").toLowerCase().includes(q) || c.partners.some((p) => p.toLowerCase().includes(q))) &&
+  const net = NET;
+  return (!q || c.city.toLowerCase().includes(q) || (c.sector || "").toLowerCase().includes(q) ||
+      c.partners.some((p) => p.toLowerCase().includes(q)) ||
+      c.pizzerias.some((p) => p.name.toLowerCase().includes(q))) &&
     (!state.cohort || cohort(c.pop) === state.cohort) &&
-    (!state.kind || (state.kind === "sector" ? !!c.sector : !c.sector)) &&
     (!state.qsr || c.qsr > 0) &&
-    (!state.stops || (stopsShare(c) ?? 0) > 0.05) &&
     (!state.risk || (() => { const v = cview(c);
       if (state.risk === "rating") return v.rating != null && v.rating < 4.3;
       if (state.risk === "lfl") return v.lfl_rev != null && v.lfl_rev < 0;
       if (state.risk === "stops") return v.stops_share != null && v.stops_share > 0.05;
       if (state.risk === "lowrev") return net.rev_avg != null && v.rev_avg != null && v.rev_avg < net.rev_avg;
-      return true; })())
-  );
+      return true; })());
 }
 
-function sortRows(rows, key, dir) {
-  return [...rows].sort((a, b) => {
-    const av = a[key], bv = b[key];
-    if (av == null && bv == null) return 0;
-    if (av == null) return 1;
-    if (bv == null) return -1;
-    if (typeof av === "string") return dir * av.localeCompare(bv, "ru");
-    return dir * (av - bv);
-  });
+let NET = null;
+
+function rowCells(rank, indent, label, v, extra, score, n, pred, qsr, open) {
+  const ind = indent === 2 ? "gp-indent2" : indent === 1 ? "gp-indent1" : "";
+  return `<td>${rank || ""}</td>
+    <td class="l ${ind}"><span class="gp-caret">${open == null ? "" : open ? "▸" : "▸"}</span>${label}</td>
+    <td class="gp-flag">${score == null ? "—" : fmt(score, 1)}</td>
+    <td>${n == null ? "—" : fmt(n)}</td>
+    <td>${fmtM(v.rev)}</td>
+    <td>${fmtM(v.rev_avg)}</td>
+    <td class="${pctClass(v.lfl_rev)}">${pct(v.lfl_rev)}</td>
+    <td class="${pctClass(v.lfl_ord)}">${pct(v.lfl_ord)}</td>
+    <td class="${v.rating != null && v.rating < 4.3 ? "gp-down" : ""}">${v.rating == null ? "—" : fmt(v.rating, 2)}</td>
+    <td class="${v.stops_share != null && v.stops_share > 0.05 ? "gp-flag" : ""}">${v.stops_share == null ? "—" : fmt(v.stops_share * 100, 1) + "%"}</td>
+    <td class="gp-hide-narrow">${pred || "—"}</td>
+    <td class="gp-hide-narrow l">${esc(qsr || "—")}</td>`;
 }
 
-function renderKpis(list) {
-  const views = list.map(cview);
-  const pz = list.reduce((s, c) => s + c.n, 0);
-  const rev = views.reduce((s, v) => s + (v.rev || 0), 0);
-  const stops = views.reduce((s, v) => s + (v.stops || 0), 0);
-  document.querySelector('[data-k="rev"]').textContent = fmtM(rev);
-  document.querySelector('[data-k="pz"]').textContent = fmt(pz);
-  document.querySelector('[data-k="ct"]').textContent = fmt(list.length);
-  document.querySelector('[data-k="avg"]').textContent = fmtM(pz ? rev / pz : null);
-  document.querySelector('[data-k="stops"]').textContent = fmtM(stops);
-  document.querySelector('[data-k="stops-sh"]').textContent = rev ? fmt(stops / rev * 100, 1) + "%" : "—";
-  const best = [...views].sort((a, b) => (b.rev || 0) - (a.rev || 0)).slice(0, 3);
-  document.querySelector('[data-k="top-best"]').innerHTML = best.map((v) =>
-    `<li><span class="gp-top-name">${esc(v.sector && v.sector !== v.city ? v.city + " — " + v.sector : v.city)}<span class="gp-top-sub">${fmt(v.n)} пиццерий</span></span><span class="gp-top-val">${fmtM(v.rev)}</span></li>`).join("");
-  const worst = [...views].filter((v) => v.stops_share != null && v.stops > 0).sort((a, b) => b.stops_share - a.stops_share).slice(0, 3);
-  document.querySelector('[data-k="top-stops"]').innerHTML = worst.map((v) =>
-    `<li><span class="gp-top-name">${esc(v.sector && v.sector !== v.city ? v.city + " — " + v.sector : v.city)}<span class="gp-top-sub">${fmtM(v.stops)} млн ₽</span></span><span class="gp-top-val">${fmt(v.stops_share * 100, 1)}%</span></li>`).join("");
-}
-
-// aggregate monthly series over filtered cities
-function monthlyAgg(list) {
-  return MONTHS.map((m) => {
-    let rev = 0, stops = 0, lfl = [];
-    for (const c of list) {
-      const mmv = (c.months || {})[m];
-      if (!mmv) continue;
-      rev += mmv.rev || 0; stops += mmv.stops || 0;
-      if (mmv.lfl_rev != null) lfl.push(mmv.lfl_rev);
-    }
-    return { m, rev, stops, lfl: lfl.length ? lfl.reduce((a, b) => a + b) / lfl.length : null };
-  });
-}
-
-const NS = "http://www.w3.org/2000/svg";
-function lineChart(el, series, { ylab = "млн ₽" } = {}) {
-  const W = 640, H = 260, P = { t: 14, r: 14, b: 34, l: 52 };
-  const xs = series.map((_, i) => P.l + (i * (W - P.l - P.r)) / Math.max(series.length - 1, 1));
-  const maxv = Math.max(...series.map((s) => s.v), 1e-9);
-  const ys = (v) => P.t + (H - P.t - P.b) * (1 - v / maxv);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">`;
-  for (let g = 0; g <= 4; g++) {
-    const v = (maxv * g) / 4, y = ys(v);
-    svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${y}" y2="${y}" stroke="var(--cds-chart-grid)"/>`;
-    svg += `<text x="${P.l - 6}" y="${y + 4}" text-anchor="end" font-size="10" fill="var(--color-fg-muted)">${fmt(v)}</text>`;
-  }
-  const pts = series.map((s, i) => `${xs[i]},${ys(s.v)}`).join(" ");
-  svg += `<polyline points="${pts}" fill="none" stroke="var(--color-fg)" stroke-width="2"/>`;
-  series.forEach((s, i) => {
-    svg += `<circle cx="${xs[i]}" cy="${ys(s.v)}" r="3.5" fill="var(--color-fg)"><title>${MNAMES[s.m]}: ${fmt(s.v)} ${ylab}</title></circle>`;
-    svg += `<text x="${xs[i]}" y="${H - 20}" text-anchor="middle" font-size="10" fill="var(--color-fg-muted)">${MNAMES[s.m]}</text>`;
-  });
-  svg += "</svg>";
-  el.innerHTML = svg;
-}
-
-function renderCharts(list) {
-  const agg = monthlyAgg(list);
-  lineChart($("chart-rev"), agg.map((a) => ({ m: a.m, v: a.rev / 1e6 })));
-  lineChart($("chart-stops"), agg.map((a) => ({ m: a.m, v: a.stops / 1e6 })));
-}
-
-function renderCities() {
-  const list = sortRows(filtered().map(cview), state.sort, state.dir);
-  document.querySelectorAll("#cities-table th").forEach((th) => {
-    const btn = th.querySelector("[data-sort]");
-    if (btn && btn.dataset.sort === state.sort) th.setAttribute("aria-sort", state.dir < 0 ? "descending" : "ascending");
-    else th.removeAttribute("aria-sort");
-  });
-  $("cities-body").innerHTML = list.map((v) => `
-    <tr data-key="${esc(v.key)}"${state.sel === v.key ? ' class="is-sel"' : ""}>
-      <td class="l">${esc(v.city)}</td>
-      <td class="l">${esc(v.sector || "—")}</td>
-      <td>${fmt(v.n)}</td>
-      <td>${fmtM(v.rev)}</td>
-      <td>${fmtM(v.rev_avg)}</td>
-      <td class="${pctClass(v.lfl_rev)}">${pct(v.lfl_rev)}</td>
-      <td class="${pctClass(v.lfl_ord)}">${pct(v.lfl_ord)}</td>
-      <td>${v.rating == null ? "—" : fmt(v.rating, 2)}</td>
-      <td>${fmtM(v.stops)}</td>
-      <td>${v.stops_share == null ? "—" : fmt(v.stops_share * 100, 1) + "%"}</td>
-      <td class="gp-hide-narrow">${v.pred || "—"}</td>
-      <td class="gp-hide-narrow">${fmt(v.pop)}</td>
-    </tr>`).join("");
-  $("cities-empty").hidden = list.length > 0;
-  document.querySelectorAll("#cities-body tr").forEach((tr) =>
-    tr.addEventListener("click", () => { state.sel = tr.dataset.key; renderDetail(); renderCities(); $("detail").scrollIntoView({ behavior: "smooth", block: "start" }); }));
-}
-
-function renderDetail() {
-  const c = cities.find((x) => x.key === state.sel);
-  $("detail").hidden = !c;
-  if (!c) return;
-  const v = mm(c);
-  $("detail-title").textContent = cityLabel(c);
-  $("detail-sub").textContent = `${c.country} · ${c.n} ${c.n === 1 ? "пиццерия" : c.n < 5 ? "пиццерии" : "пиццерий"} · ${state.month ? MNAMES[state.month] : "весь 2026 год"}`;
+function pzPanel(p, c) {
+  const v = pview(p), cv = cview(c);
   const k = [
-    ["Выручка", fmtM(v.rev) + " млн ₽"],
-    ["Средняя на пиццерию", fmtM(v.rev_avg) + " млн ₽"],
+    ["Город", esc(c.city)],
+    ["Сектор", c.sector && c.sector !== c.city ? esc(c.sector) : "—"],
+    ["Пиццерия", esc(p.name)],
+    ["Партнёр", esc(p.partner || "—")],
+    ["Формат", esc(p.format || "—")],
+    ["Статус", esc(p.status || "—")],
+    ["Возраст пиццерии", "нет данных"],
+    ["Дата открытия первой в городе", "нет данных"],
+    ["Выручка за период", fmtM(v.rev) + " млн ₽"],
     ["LFL выручка", pct(v.lfl_rev)],
     ["LFL заказы", pct(v.lfl_ord)],
+    ["Средняя выручка города/сектора", fmtM(cv.rev_avg) + " млн ₽"],
+    ["Предписания 2026: РКО / РС / аудиты", `${fmt(p.pred_rko)} / ${fmt(p.pred_rs)} / ${fmt(p.pred_audit)} (всего ${fmt(p.pred_total)})`],
+    ["РК доставка / ресторан", "нет данных"],
     ["Оценка на картах", v.rating == null ? "—" : fmt(v.rating, 2)],
-    ["Стопы", fmtM(v.stops) + " млн ₽"],
-    ["Предписания 2026", fmt(c.pred)],
-    [c.sector && c.sector !== c.city ? "Население сектора" : "Население", fmt(c.pop)],
+    ["Население города", fmt(c.city_pop || c.pop)],
+    ["Население сектора", c.sector && c.sector !== c.city ? fmt(c.pop) : "—"],
+    ["Стопы", fmtM(v.stops) + " млн ₽ (" + (v.stops_share == null ? "—" : fmt(v.stops_share * 100, 1) + "% выручки") + ")"],
   ];
-  if (c.sector && c.sector !== c.city) k.push(["Население города", fmt(c.city_pop)]);
-  $("detail-kpis").innerHTML = k.map(([l, x]) =>
-    `<div class="gp-detail-kpi"><span class="gp-kpi-label">${esc(l)}</span><span class="v">${esc(x)}</span></div>`).join("");
-  const badges = [
-    ...c.partners.map((p) => "Партнёр: " + p),
-    ...c.formats,
-    c.qsr != null ? `Большая тройка: ${fmt(c.qsr)} (BK ${fmt(c.bk)}, Rostic's ${fmt(c.rostics)}, Вкусно и точка ${fmt(c.vit)})` : "Большой тройки нет",
-  ];
-  $("detail-badges").innerHTML = badges.map((b) => `<span class="gp-badge">${esc(b)}</span>`).join("");
-  // monthly table for the city
   const mrows = MONTHS.map((m) => {
-    const mv = (c.months || {})[m];
-    if (!mv) return "";
-    const sh = mv.rev ? (mv.stops || 0) / mv.rev : null;
-    return `<tr${state.month === m ? ' class="is-sel"' : ""}><td class="l">${MNAMES[m]}</td><td>${fmtM(mv.rev)}</td><td>${fmtM(mv.rev_avg)}</td><td class="${pctClass(mv.lfl_rev)}">${pct(mv.lfl_rev)}</td><td class="${pctClass(mv.lfl_ord)}">${pct(mv.lfl_ord)}</td><td>${mv.rating == null ? "—" : fmt(mv.rating, 2)}</td><td>${fmtM(mv.stops)}</td><td>${sh == null ? "—" : fmt(sh * 100, 1) + "%"}</td></tr>`;
+    const mv = (p.months || {})[m]; if (!mv) return "";
+    const sh = mv.rev ? (mv.stops_rev || 0) / mv.rev : null;
+    return `<tr><td class="l">${MNAMES[m]}</td><td>${fmtM(mv.rev)}</td><td class="${pctClass(mv.lfl_rev)}">${pct(mv.lfl_rev)}</td><td class="${pctClass(mv.lfl_ord)}">${pct(mv.lfl_ord)}</td><td>${mv.rating == null ? "—" : fmt(mv.rating, 2)}</td><td>${fmtM(mv.stops_rev)}</td><td>${sh == null ? "—" : fmt(sh * 100, 1) + "%"}</td></tr>`;
   }).join("");
-  $("detail-months").innerHTML = mrows || '<tr><td class="l muted">Нет данных по месяцам</td></tr>';
-  const rows = sortRows(c.pizzerias.map(pview), state.psort, state.pdir);
-  document.querySelectorAll("#pz-table th").forEach((th) => {
-    const btn = th.querySelector("[data-sort]");
-    if (btn && btn.dataset.sort === state.psort) th.setAttribute("aria-sort", state.pdir < 0 ? "descending" : "ascending");
-    else th.removeAttribute("aria-sort");
-  });
-  $("pz-body").innerHTML = rows.map((p) => `
-    <tr>
-      <td class="l">${esc(p.name)}<div class="muted" style="font-size:var(--cds-font-size-caption)">${esc(p.address || "")}</div></td>
-      <td class="l">${esc(p.partner || "—")}</td>
-      <td class="l gp-hide-narrow">${esc(p.format || "—")}</td>
-      <td>${fmtM(p.rev)}</td>
-      <td class="${pctClass(p.lfl_rev)}">${pct(p.lfl_rev)}</td>
-      <td class="${pctClass(p.lfl_ord)}">${pct(p.lfl_ord)}</td>
-      <td>${p.rating == null ? "—" : fmt(p.rating, 2)}</td>
-      <td>${fmtM(p.stops_rev)}</td>
-      <td>${p.stops_share == null ? "—" : fmt(p.stops_share * 100, 1) + "%"}</td>
-      <td class="gp-hide-narrow">${fmt(p.pred_rko)}</td>
-      <td class="gp-hide-narrow">${fmt(p.pred_rs)}</td>
-      <td class="gp-hide-narrow">${fmt(p.pred_audit)}</td>
-    </tr>`).join("");
+  return `<tr class="gp-pz-panel"><td colspan="12">
+    <div class="gp-card" style="box-shadow:none">
+      <div class="gp-card-head"><h2>${esc(p.name)}</h2><span class="gp-note" style="margin:0">${esc(p.address || "")}</span></div>
+      <div class="gp-detail-kpis">${k.map(([l, x]) => `<div class="gp-detail-kpi"><span class="gp-kpi-label">${l}</span><span class="v" style="font-size:var(--cds-font-size-body)">${x}</span></div>`).join("")}</div>
+      <p class="gp-note" style="margin:var(--cds-gap-md) 0 4px">Динамика пиццерии по месяцам:</p>
+      <div class="gp-tablebox" style="max-height:14rem"><table class="gp-table">
+        <thead><tr><th class="l">Месяц</th><th>Выручка, млн ₽</th><th>LFL выр.</th><th>LFL зак.</th><th>Карты</th><th>Стопы, млн ₽</th><th>Стопы, %</th></tr></thead>
+        <tbody>${mrows || '<tr><td class="l muted">Нет данных</td></tr>'}</tbody></table></div>
+    </div></td></tr>`;
 }
 
-function renderRisk(list) {
-  const net = netAvg();
-  const rows = list.map((c) => ({ c, v: cview(c), score: riskScore(cview(c), net) }))
-    .filter((r) => r.v.rev != null && r.score > 0)
-    .sort((a, b) => b.score - a.score).slice(0, 25);
-  $("risk-body").innerHTML = rows.map((r, i) => `
-    <tr data-key="${esc(r.c.key)}"${state.sel === r.c.key ? ' class="is-sel"' : ""}>
-      <td>${i + 1}</td>
-      <td class="l">${esc(r.c.city)}</td>
-      <td class="l">${esc(r.c.sector || "—")}</td>
-      <td class="gp-flag">${fmt(r.score, 1)}</td>
-      <td class="${r.v.rating != null && r.v.rating < 4.3 ? "gp-down" : ""}">${r.v.rating == null ? "—" : fmt(r.v.rating, 2)}</td>
-      <td class="${pctClass(r.v.lfl_rev)}">${pct(r.v.lfl_rev)}</td>
-      <td class="${net.rev_avg != null && r.v.rev_avg != null && r.v.rev_avg < net.rev_avg ? "gp-down" : ""}">${fmtM(r.v.rev_avg)}</td>
-      <td class="${r.v.stops_share != null && r.v.stops_share > 0.05 ? "gp-flag" : ""}">${r.v.stops_share == null ? "—" : fmt(r.v.stops_share * 100, 1) + "%"}</td>
-      <td>${r.c.pred || "—"}</td>
-    </tr>`).join("");
-  document.querySelectorAll("#risk-body tr").forEach((tr) =>
-    tr.addEventListener("click", () => { state.sel = tr.dataset.key; renderDetail(); renderRisk(filtered()); renderCities(); $("detail").scrollIntoView({ behavior: "smooth", block: "start" }); }));
+function renderRank() {
+  NET = netAvg();
+  const list = cities.filter(cityPass);
+  const gs = groups(list);
+  const scored = gs.map((g) => {
+    const v = cview(g.grouped ? g.agg : g.members[0]);
+    const score = g.grouped
+      ? Math.round(g.members.map((c) => riskScore(cview(c), NET) * (cview(c).rev || 0)).reduce((a, b) => a + b, 0) / Math.max(g.members.reduce((s, c) => s + (cview(c).rev || 0), 0), 1) * 10) / 10
+      : riskScore(v, NET);
+    return { g, v, score };
+  }).sort((a, b) => b.score - a.score);
+
+  let html = "", rank = 0;
+  for (const { g, v, score } of scored) {
+    rank++;
+    const open = state.openAll || state.open.has(g.gkey);
+    const q = state.q.toLowerCase();
+    html += `<tr class="gp-row${open ? " is-open" : ""}" data-g="${esc(g.gkey)}">` +
+      rowCells(rank, 0, `<strong>${esc(g.name)}</strong>`, v, null, score, g.grouped ? g.agg.n : g.members[0].n,
+        g.grouped ? g.agg.pred : g.members[0].pred, qsrLabel(g.grouped ? g.agg : g.members[0]), open) + "</tr>";
+    if (!open) continue;
+    for (const c of g.members) {
+      const cv = cview(c);
+      const cs = riskScore(cv, NET);
+      const showSector = g.grouped;
+      const ckey = c.key;
+      const cOpen = state.openAll || state.open.has(ckey);
+      if (showSector) {
+        html += `<tr class="gp-row gp-sub${cOpen ? " is-open" : ""}" data-c="${esc(ckey)}">` +
+          rowCells("", 1, `сектор ${esc(c.sector)}`, cv, null, cs, c.n, c.pred, qsrLabel(c), cOpen) + "</tr>";
+        if (!cOpen) continue;
+      }
+      let pzs = c.pizzerias.map((p) => ({ p, v: pview(p) }));
+      if (q) pzs = pzs.filter((x) => x.p.name.toLowerCase().includes(q) || (x.p.partner || "").toLowerCase().includes(q));
+      const pScoreOf = (pv) => riskScore({ ...pv, rev_avg: pv.rev }, NET);
+      pzs.sort((a, b) => pScoreOf(b.v) - pScoreOf(a.v));
+      const baseIndent = showSector ? 2 : 1;
+      for (const { p, v: pv } of pzs) {
+        const pid = ckey + "|" + p.name;
+        const pScore = riskScore({ ...pv, rev_avg: pv.rev }, NET);
+        html += `<tr class="gp-row gp-sub${state.pzOpen === pid ? " is-open" : ""}" data-p="${esc(pid)}">` +
+          rowCells("", baseIndent, `${esc(p.name)}<div class="muted" style="font-size:var(--cds-font-size-caption)">${esc(p.partner || "")} · ${esc(p.format || "")}</div>`,
+            { ...pv, rev_avg: null }, null, pScore, null, null, null, state.pzOpen === pid) + "</tr>";
+        if (state.pzOpen === pid) html += pzPanel(p, c);
+      }
+    }
+  }
+  $("rank-body").innerHTML = html;
+  $("rank-empty").hidden = scored.length > 0;
+  $("rank-sub").textContent = `${scored.length} городов · период: ${state.month ? MNAMES[state.month] : "весь 2026 год"}`;
+  document.querySelectorAll("#rank-body tr[data-g]").forEach((tr) =>
+    tr.addEventListener("click", () => {
+      const k = tr.dataset.g;
+      state.open.has(k) ? state.open.delete(k) : state.open.add(k);
+      state.pzOpen = null;
+      renderRank();
+    }));
+  document.querySelectorAll("#rank-body tr[data-c]").forEach((tr) =>
+    tr.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const k = tr.dataset.c;
+      state.open.has(k) ? state.open.delete(k) : state.open.add(k);
+      state.pzOpen = null;
+      renderRank();
+    }));
+  document.querySelectorAll("#rank-body tr[data-p]").forEach((tr) =>
+    tr.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const k = tr.dataset.p;
+      state.pzOpen = state.pzOpen === k ? null : k;
+      renderRank();
+      const sel = document.querySelector(`tr[data-p="${CSS.escape(k)}"]`);
+      if (state.pzOpen && sel) sel.scrollIntoView({ block: "nearest" });
+    }));
 }
 
-function renderAll() { const l = filtered(); renderKpis(l); renderRisk(l); renderCharts(l); renderCities(); renderDetail(); }
-
-$("gp-q").addEventListener("input", (e) => { state.q = e.target.value.trim(); renderAll(); });
+$("gp-q").addEventListener("input", (e) => { state.q = e.target.value.trim(); renderRank(); });
 document.querySelectorAll("#gp-cohort button").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll("#gp-cohort button").forEach((x) => x.setAttribute("aria-pressed", "false"));
-  b.setAttribute("aria-pressed", "true"); state.cohort = b.dataset.v; renderAll();
-}));
-document.querySelectorAll("#gp-kind button").forEach((b) => b.addEventListener("click", () => {
-  document.querySelectorAll("#gp-kind button").forEach((x) => x.setAttribute("aria-pressed", "false"));
-  b.setAttribute("aria-pressed", "true"); state.kind = b.dataset.v; renderAll();
+  b.setAttribute("aria-pressed", "true"); state.cohort = b.dataset.v; renderRank();
 }));
 document.querySelectorAll("#gp-risk button").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll("#gp-risk button").forEach((x) => x.setAttribute("aria-pressed", "false"));
-  b.setAttribute("aria-pressed", "true"); state.risk = b.dataset.v; renderAll();
+  b.setAttribute("aria-pressed", "true"); state.risk = b.dataset.v; renderRank();
 }));
 document.querySelectorAll("#gp-month button").forEach((b) => b.addEventListener("click", () => {
   document.querySelectorAll("#gp-month button").forEach((x) => x.setAttribute("aria-pressed", "false"));
-  b.setAttribute("aria-pressed", "true"); state.month = b.dataset.v; renderAll();
+  b.setAttribute("aria-pressed", "true"); state.month = b.dataset.v; renderRank();
 }));
-$("gp-qsr").addEventListener("change", (e) => { state.qsr = e.target.checked; renderAll(); });
-$("gp-stopsf").addEventListener("change", (e) => { state.stops = e.target.checked; renderAll(); });
+$("gp-qsr").addEventListener("change", (e) => { state.qsr = e.target.checked; renderRank(); });
+$("gp-open").addEventListener("change", (e) => { state.openAll = e.target.checked; renderRank(); });
 $("gp-reset").addEventListener("click", () => {
-  state.q = ""; state.cohort = ""; state.kind = ""; state.month = ""; state.risk = ""; state.qsr = false; state.stops = false;
-  $("gp-q").value = ""; $("gp-qsr").checked = false; $("gp-stopsf").checked = false;
+  state.q = ""; state.cohort = ""; state.month = ""; state.risk = ""; state.qsr = false; state.openAll = false;
+  state.open = new Set(); state.pzOpen = null;
+  $("gp-q").value = ""; $("gp-qsr").checked = false; $("gp-open").checked = false;
   document.querySelectorAll(".gp-seg button").forEach((x) => x.setAttribute("aria-pressed", "false"));
   document.querySelectorAll('.gp-seg button[data-v=""]').forEach((x) => x.setAttribute("aria-pressed", "true"));
-  renderAll();
+  renderRank();
 });
-document.querySelectorAll("#cities-table [data-sort]").forEach((b) => b.addEventListener("click", () => {
-  const k = b.dataset.sort;
-  if (state.sort === k) state.dir *= -1; else { state.sort = k; state.dir = typeof cview(cities[0])[k] === "string" ? 1 : -1; }
-  renderCities();
-}));
-document.querySelectorAll("#pz-table [data-sort]").forEach((b) => b.addEventListener("click", () => {
-  const k = b.dataset.sort;
-  if (state.psort === k) state.pdir *= -1; else { state.psort = k; state.pdir = -1; }
-  renderDetail();
-}));
 document.querySelectorAll('.gp-seg button[data-v=""]').forEach((x) => x.setAttribute("aria-pressed", "true"));
-renderAll();
-</script></script>
+renderRank();
+</script>
 </body>
 </html>

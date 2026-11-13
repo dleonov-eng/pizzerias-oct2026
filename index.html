@@ -191,6 +191,7 @@ tr.gp-sub td { font-size: var(--cds-font-size-caption); }
           <th class="l">Город / сектор / пиццерия</th>
           <th>Индекс</th>
           <th>Пиццерий</th>
+          <th>Население</th>
           <th>Выручка, млн ₽</th>
           <th>Средняя, млн ₽</th>
           <th>Выр./10k, тыс. ₽/мес</th>
@@ -371,6 +372,7 @@ function rowCells(rank, indent, label, v, extra, score, n, pred, qsr, open) {
     <td class="l ${ind}"><span class="gp-caret">${open == null ? "" : open ? "▸" : "▸"}</span>${label}</td>
     <td class="gp-flag">${score == null ? "—" : fmt(score, 1)}</td>
     <td>${n == null ? "—" : fmt(n)}</td>
+    <td>${v.pop == null ? "—" : fmt(v.pop)}</td>
     <td>${fmtM(v.rev)}</td>
     <td>${fmtM(v.rev_avg)}</td>
     <td>${rev10k(v.rev, v.pop, v.n_months) == null ? "—" : fmt(rev10k(v.rev, v.pop, v.n_months), 0) + " тыс."}</td>
@@ -411,6 +413,8 @@ function pzPanel(p, c) {
     ["LFL заказы", pct(v.lfl_ord)],
     ["Средняя выручка города/сектора", fmtM(cv.rev_avg) + " млн ₽"],
     ["Выручка города на 10 000 жителей", rev10k(cv.rev, c.city_pop || c.pop, cv.n_months) == null ? "—" : fmt(rev10k(cv.rev, c.city_pop || c.pop, cv.n_months), 0) + " тыс. ₽/мес"],
+    ["Доля выручки пиццерии в городе/секторе", cv.rev && v.rev != null ? fmt(v.rev / cv.rev * 100, 1) + "%" : "—"],
+    ["Выручка пиццерии на 10 000 жителей города", rev10k(v.rev, c.city_pop || c.pop, v.n_months || 1) == null ? "—" : fmt(rev10k(v.rev, c.city_pop || c.pop, v.n_months || 1), 1) + " тыс. ₽/мес"],
     ["Предписания 2026: РКО / РС / аудиты", `${fmt(p.pred_rko)} / ${fmt(p.pred_rs)} / ${fmt(p.pred_audit)} (всего ${fmt(p.pred_total)})`],
     ["РК доставка: рейтинг / время / >40 мин", `${wavgM(p, "rating_d") == null ? "—" : fmt(wavgM(p, "rating_d"), 2)} / ${wavgM(p, "deliv_time") == null ? "—" : fmt(wavgM(p, "deliv_time")) + " мин"} / ${wavgM(p, "pct40") == null ? "—" : fmt(wavgM(p, "pct40") * 100, 1) + "%"}`],
     ["РК ресторан: рейтинг / >15 мин / готовка", `${wavgM(p, "rating_r") == null ? "—" : fmt(wavgM(p, "rating_r"), 2)} / ${wavgM(p, "pct_r15") == null ? "—" : fmt(wavgM(p, "pct_r15") * 100, 1) + "%"} / ${wavgM(p, "cook_time") == null ? "—" : fmt(wavgM(p, "cook_time")) + " мин"}`],

@@ -211,6 +211,7 @@ tr.gp-sub td { font-size: var(--cds-font-size-caption); }
           <th>Пиццерий</th>
           <th>Выручка, млн ₽</th>
           <th>Средняя, млн ₽</th>
+          <th>Выр./10k, млн ₽</th>
           <th>LFL выр.</th>
           <th>LFL зак.</th>
           <th>Карты</th>
@@ -237,6 +238,7 @@ const fmt = (v, d = 0) => v === null || v === undefined || isNaN(v) ? "—"
   : Number(v).toLocaleString("ru-RU", { maximumFractionDigits: d, minimumFractionDigits: d });
 const fmtM = (v) => v == null ? "—" : fmt(v / 1e6, 1);
 const pct = (v) => v == null ? "—" : (v > 0 ? "+" : "") + fmt(v, 1) + "%";
+const rev10k = (rev, pop) => rev != null && pop ? rev / (pop / 10000) : null;
 const pctClass = (v) => v == null ? "" : v > 0 ? "gp-up" : v < 0 ? "gp-down" : "";
 const cohort = (pop) => pop == null ? "" : pop < 50000 ? "s" : pop < 300000 ? "m" : pop < 1e6 ? "l" : "xl";
 
@@ -370,6 +372,7 @@ function rowCells(rank, indent, label, v, extra, score, n, pred, qsr, open) {
     <td>${n == null ? "—" : fmt(n)}</td>
     <td>${fmtM(v.rev)}</td>
     <td>${fmtM(v.rev_avg)}</td>
+    <td>${fmtM(rev10k(v.rev, v.pop))}</td>
     <td class="${pctClass(v.lfl_rev)}">${pct(v.lfl_rev)}</td>
     <td class="${pctClass(v.lfl_ord)}">${pct(v.lfl_ord)}</td>
     <td class="${v.rating != null && v.rating < 4.3 ? "gp-down" : ""}">${v.rating == null ? "—" : fmt(v.rating, 2)}</td>
@@ -393,6 +396,7 @@ function pzPanel(p, c) {
     ["LFL выручка", pct(v.lfl_rev)],
     ["LFL заказы", pct(v.lfl_ord)],
     ["Средняя выручка города/сектора", fmtM(cv.rev_avg) + " млн ₽"],
+    ["Выручка города на 10 000 жителей", fmtM(rev10k(cv.rev, c.city_pop || c.pop)) + " млн ₽"],
     ["Предписания 2026: РКО / РС / аудиты", `${fmt(p.pred_rko)} / ${fmt(p.pred_rs)} / ${fmt(p.pred_audit)} (всего ${fmt(p.pred_total)})`],
     ["РК доставка / ресторан", "нет данных"],
     ["Оценка на картах", v.rating == null ? "—" : fmt(v.rating, 2)],
@@ -434,7 +438,7 @@ function renderRank() {
     const open = state.openAll || state.open.has(g.gkey);
     const q = state.q.toLowerCase();
     html += `<tr class="gp-row${open ? " is-open" : ""}" data-g="${esc(g.gkey)}">` +
-      rowCells(rank, 0, `<strong>${esc(g.name)}</strong>`, v, null, score, g.grouped ? g.agg.n : g.members[0].n,
+      rowCells(rank, 0, `<strong>${esc(g.name)}</strong>`, { ...v, pop: g.grouped ? g.agg.pop : (g.members[0].pop ?? g.members[0].city_pop) }, null, score, g.grouped ? g.agg.n : g.members[0].n,
         (g.grouped ? predLabel(g.agg._rko, g.agg._rs, g.agg._audit) : predLabel(g.members[0]._rko, g.members[0]._rs, g.members[0]._audit)),
         qsrLabel(g.grouped ? g.agg : g.members[0]), open) + "</tr>";
     if (!open) continue;
@@ -447,7 +451,7 @@ function renderRank() {
       const cOpen = state.openAll || state.open.has(ckey);
       if (showSector) {
         html += `<tr class="gp-row gp-sub${cOpen ? " is-open" : ""}" data-c="${esc(ckey)}">` +
-          rowCells("", 1, c.sector && c.sector !== c.city ? `сектор ${esc(c.sector)}` : `${esc(c.city)} — без сектора`, cv, null, cs, c.n, predLabel(c._rko, c._rs, c._audit), qsrLabel(c), cOpen) + "</tr>";
+          rowCells("", 1, c.sector && c.sector !== c.city ? `сектор ${esc(c.sector)}` : `${esc(c.city)} — без сектора`, { ...cv, pop: c.pop }, null, cs, c.n, predLabel(c._rko, c._rs, c._audit), qsrLabel(c), cOpen) + "</tr>";
         if (!cOpen) continue;
       }
       let pzs = c.pizzerias.map((p) => ({ p, v: pview(p) }));
@@ -460,7 +464,7 @@ function renderRank() {
         const pScore = riskScore({ ...pv, rev_avg: pv.rev }, NET);
         html += `<tr class="gp-row gp-sub${state.pzOpen === pid ? " is-open" : ""}" data-p="${esc(pid)}">` +
           rowCells("", baseIndent, `${esc(p.name)}<div class="muted" style="font-size:var(--cds-font-size-caption)">${esc(p.partner || "")} · ${esc(p.format || "")}</div>`,
-            { ...pv, rev_avg: null }, null, pScore, null, null, null, state.pzOpen === pid) + "</tr>";
+            { ...pv, rev_avg: null, rev: cv.rev, pop: c.city_pop || c.pop }, null, pScore, null, null, null, state.pzOpen === pid) + "</tr>";
         if (state.pzOpen === pid) html += pzPanel(p, c);
       }
     }
